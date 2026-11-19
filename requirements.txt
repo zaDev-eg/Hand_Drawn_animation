@@ -4,6 +4,7 @@ annotated-types==0.8.0
 anyio==4.16.0
 appnope==1.0.0
 asttokens==3.0.2
+asyncpg==0.32.0
 certifi==2026.10.23
 charset-normalizer==3.5.2
 click==8.5.1
@@ -21,6 +22,7 @@ fastapi-cloud-cli==0.28.0
 fastar==0.12.0
 fonttools==4.68.0
 googleapis-common-protos==1.76.0
+greenlet==3.5.6
 h11==0.16.0
 httpcore==1.0.9
 httpcore2==2.16.2
@@ -79,6 +81,8 @@ rich-toolkit==0.20.6
 rignore==0.8.1
 sentry-sdk==2.75.0
 shellingham==1.5.4
+SQLAlchemy==2.1.9
+sqlmodel==0.0.50
 stack-data==0.6.3
 starlette==1.10.0
 tornado==6.6.1
