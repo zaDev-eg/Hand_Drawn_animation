@@ -1,17 +1,16 @@
 
-## imports 
 import uuid
 from datetime import datetime, timezone
+
 from sqlalchemy import Column
-from sqlmodel import SQLModel, Field
 from sqlalchemy.dialects import postgresql as pg
+from sqlmodel import SQLModel, Field
 
 
-## user model 
-class UserModel(SQLModel, table=True): 
+class UserModel(SQLModel, table=True):
+
     __tablename__ = "users"
-    
-    ## features of the user model 
+
     user_id: uuid.UUID = Field(
         sa_column=Column(
             pg.UUID,
@@ -20,10 +19,22 @@ class UserModel(SQLModel, table=True):
             default=uuid.uuid4,
         )
     )
+
     username: str
-    email: str 
+
+    email: str = Field(
+        index=True,
+        unique=True,
+        nullable=False,
+    )
+
     hashed_password: str
-    
+
+    is_verified: bool = Field(
+        default=False,
+        nullable=False,
+    )
+
     role: str = Field(
         sa_column=Column(
             pg.VARCHAR,
@@ -31,19 +42,19 @@ class UserModel(SQLModel, table=True):
             server_default="user",
         )
     )
-    
+
     created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(
             pg.TIMESTAMP(timezone=True),
-            default=datetime.now(timezone.utc),
             nullable=False,
-        )
+        ),
     )
-    
+
     updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(
             pg.TIMESTAMP(timezone=True),
-            default=datetime.now(timezone.utc),
             nullable=False,
-        )
+        ),
     )

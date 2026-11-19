@@ -1,118 +1,156 @@
 
-from fastapi import Request, HTTPException, status, Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import Annotated, List
-from .authontication import varify_access_token
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import Depends, HTTPException, status
+
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..database.db_connection import get_session
+from ..database.redis_connection import check_blocklist
+
 from ..services.user_crud_logic import UserService
 from ..models.user_model import UserModel
 
+from .authontication import varify_access_token
+
+
 service = UserService()
 
-##--------------->
-## Authorization
-##--------------->
-class TokenBearer(HTTPBearer):
-
-    def __init__(self, auto_error: bool = True):
-        super().__init__(auto_error=auto_error)
-
-    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
-        ## got back the redentials
-        creds = await super().__call__(request)
-
-        ## creds -> schema, credentials
-        token = creds.credentials  ## got the token back from creds
-
-        ## check if the token is available
-        if token is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Please enther the access token! ",
-            )
-
-        ## got the data back from the token
-        token_data = varify_access_token(token)
-
-        if token_data is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token is expired or invalid",
-            )
-
-        # ## check if the token is in the blocklist or not
-        # if await check_blocklist(token_data):
-        #     raise HTTPException(
-        #         status_code=status.HTTP_403_FORBIDDEN,
-        #         detail="This token is in the blocklist",
-        #     )
-
-        ## check if the tokens is still alife or not
-        self.validate_access_token(token_data)
-
-        return token_data
-
-    def validate_access_token(self, token_data: dict):
-        raise NotImplementedError("Please Emplement this method in all child classes")
+bearer = HTTPBearer()
 
 
-## check if the token is valid or not
-class AccessToken(TokenBearer):
-
-    def validate_access_token(self, token_data: dict) -> None:
-        if token_data["refresh"]:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Please enter an access token",
-            )
-
-
-## check if the refresh token is valid or not
-class RefreshToken(TokenBearer):
-
-    def validate_access_token(self, token_data: dict) -> None:
-        if not token_data["refresh"]:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Please enter a refresh token",
-            )
-
-
-async def get_currect_user(
-    token_data: Annotated[dict, Depends(AccessToken())],
-    session: Annotated[AsyncSession, Depends(get_session)],
+async def _decode_bearer(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials,
+        Depends(bearer),
+    ],
+    refresh_expected: bool,
 ):
-    ## get the user email and password for get service
-    user_email = token_data["user"]["user_email"]
-    user_password = token_data["user"]["user_password"]
 
-    ## use the get service
-    user = await service.get_user_by_email(
-        email=user_email,
-        password=user_password,
+    token_data = varify_access_token(
+        credentials.credentials
     )
 
-    if not user:
+    if token_data.get("refresh") is not refresh_expected:
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="The user is not found ❌"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Wrong token type",
+        )
+
+    if await check_blocklist(token_data):
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+        )
+
+    return token_data
+
+
+async def get_access_token_data(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials,
+        Depends(bearer),
+    ],
+):
+
+    return await _decode_bearer(
+        credentials,
+        refresh_expected=False,
+    )
+
+
+async def get_refresh_token_data(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials,
+        Depends(bearer),
+    ],
+):
+
+    return await _decode_bearer(
+        credentials,
+        refresh_expected=True,
+    )
+
+
+async def get_current_user(
+    token_data: Annotated[
+        dict,
+        Depends(get_access_token_data),
+    ],
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+) -> UserModel:
+
+    try:
+
+        user_id = UUID(
+            token_data["user"]["user_id"]
+        )
+
+    except (KeyError, ValueError, TypeError):
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token payload",
+        )
+
+    user = await service.get_user_by_id(
+        user_id,
+        session,
+    )
+
+    if user is None:
+
+        raise HTTPException(
+            status_code=401,
+            detail="User associated with token no longer exists",
         )
 
     return user
 
 
-## Roles class
 class UsersRoles:
-    def __init__(self, available_roles: List[str]):
-        ## add the attribute
+
+    def __init__(self, available_roles: list[str]):
+
         self.available_roles = available_roles
 
-    async def __call__(self, user: Annotated[UserModel, Depends(get_currect_user)]):
-        ## check the user roles
+
+    async def __call__(
+        self,
+        user: Annotated[
+            UserModel,
+            Depends(get_current_user),
+        ],
+    ) -> UserModel:
+
         if user.role in self.available_roles:
-            return True
+
+            return user
 
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You have no role to make this request"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to perform this action",
         )
+
+
+CurrentUser = Annotated[
+    UserModel,
+    Depends(get_current_user),
+]
+
+
+AdminUser = Annotated[
+    UserModel,
+    Depends(UsersRoles(["admin"])),
+]

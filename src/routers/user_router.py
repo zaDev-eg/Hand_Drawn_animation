@@ -1,290 +1,539 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import Annotated
-from typing import List
-from fastapi.responses import JSONResponse
-from datetime import timedelta, datetime
 
-from src.utils.authontication import create_access_token, create_url_safe_token, varify_url_safe_token
-from ..schemas.request_schema import GetUser, CreateUser, UpdateUser, Login_User, MailSchema
+from datetime import timedelta
+from uuid import UUID
+from typing import Annotated
+import time
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..database.db_connection import get_session
-from ..services.user_crud_logic import UserService
-from ..utils.authorization import AccessToken, RefreshToken, UsersRoles
-from ..utils.config import mail_settings
 from ..database.redis_connection import add_tokens_to_blocklist
+
+from ..services.user_crud_logic import UserService
+
+from ..schemas.request_schema import (
+    CreateUser,
+    Login_User,
+    UpdateUser,
+    UpdateUserRole,
+    GetUser,
+)
+
+from ..utils.authorization import (
+    CurrentUser,
+    AdminUser,
+    get_access_token_data,
+    get_refresh_token_data,
+)
+
+from ..utils.authontication import (
+    create_access_token,
+    create_url_safe_token,
+    varify_url_safe_token,
+)
+
+from ..utils.config import mail_settings
 from ..utils.celery import send_message
 
-
-## take instances
-user_router = APIRouter()
-service = UserService(Depends(get_session))
-roles = Depends(UsersRoles(["admin", "user"]))
-
-##------------>
-## End Points
-##------------>
+from ..models.user_model import UserModel
 
 
-## Get methods
-@user_router.get("/", response_model=List[GetUser])
-async def get_all_users():
-    ## user the service
-    users = await service.get_all_users()
+router = APIRouter()
 
-    ## check
-    if users is not None:
-        return users
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="There are no users yet ❌",
-        )
+user_router = router
+
+service = UserService()
 
 
-@user_router.get("/user/{email}", response_model=GetUser, dependencies=[roles])
-async def get_user(
-    email: str,
-    password: str,
-):
-    ## get the user
-    user = await service.get_user_by_email(email, password)
+# -------------------------
+# Token Generation
+# -------------------------
 
-    ## check
-    if user is not None:
-        return user
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="The user is not found ❌ or wrong in password",
-        )
+def _token_pair(user: UserModel):
 
+    payload = {
+        "user_id": str(user.user_id)
+    }
 
-## get the verification token and make sure the user is verified
-@user_router.get("/verify/{token}")
-async def verify_user_account(
-    token: str,
-):
-    ## first we will decode the token to get the user data
-    token_data = varify_url_safe_token(token=token)
-
-    ## get back the user email and password from the token
-    user_email = token_data["email"]
-    user_password = token_data["password"]
-
-    ## check
-    if user_email is not None and user_password is not None:
-        ## get the user back
-        user = await service.get_user_by_email(
-            email=user_email,
-            password=user_password,
-        )
-
-        ## check
-        if user is not None:
-            await service.verify_user_email(
-                user=user,
-                updated_data={"is_varified": True},
-            )
-            return JSONResponse(
-                content={"message": "The user is verified successfully✅"}
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="the user is not found ❌"
-            )
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="There is some thing wrong with user email and password ❌",
-        )
-
-
-## get a new access token
-@user_router.get("/refresh_token")
-async def refresh_access_token(
-    token_data: Annotated[dict, Depends(RefreshToken())],
-):
-    ## get the expiration time
-    expiration_timestap = token_data["exp"]
-
-    ## check if the access token is still alive
-    if datetime.fromtimestamp(expiration_timestap) > datetime.now():
-        ## create a new access token
-        access_token = create_access_token(user_data=token_data["user"])
-
-        return JSONResponse(content={"New Access Token": access_token})
-
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or Expired token"
+    access_token = create_access_token(
+        payload,
+        expire=timedelta(minutes=15),
     )
 
-
-@user_router.get("/logout")
-async def user_logout(
-    token_data: Annotated[dict, Depends(AccessToken())],
-):
-    ## add the token to the blocklist
-    await add_tokens_to_blocklist(token_data)
-
-    return JSONResponse(
-        content={"message": "The token is added to the block list Successfully ✅"}
+    refresh_token = create_access_token(
+        payload,
+        refresh=True,
+        expire=timedelta(days=7),
     )
 
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
 
-## Post methods
-@user_router.post(
-    "/",
+
+# -------------------------
+# Register
+# -------------------------
+
+@router.post(
+    "/register",
+    status_code=status.HTTP_201_CREATED,
 )
-async def add_user(
-    user_data: CreateUser,
+async def register(
+    data: CreateUser,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
 ):
-    ## add the new user
-    new_user = await service.create_user(user_data)
 
-    if new_user is not None:
-
-        ## create the url_safe_token
-        token = create_url_safe_token(
-            {
-                "email": new_user.email,
-                "password": new_user.hashed_password,
-            }
-        )
-
-        ## prepare the link that the user will use to varify his/her email
-        Link = f"http://{mail_settings.DOMAIN_NAME}/api/v1/users/verify/{token}"
-
-        ## create the body of the message that will be sent by email
-        html_message = f"""
-        <h1>Verification Mail</h1>
-        <p>Please press this link:
-        <a href="{Link}">Link</a>
-        </p>
-        """
-
-        ## use Celery for BackGroundTasks
-        send_message.delay(
-            recipients=[new_user.email],
-            subject="Varification Message",
-            body=html_message,
-        )
-
-        return {
-            "message": "check your email to verify your email",
-            "new_use": new_user,
-        }
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="The user is already exist ❌",
-        )
-
-
-@user_router.post("/login")
-async def user_login(
-    user_data: Login_User,
-):
-    ## get the user by email and password
-    user = await service.get_user_by_email(
-        user_data.email,
-        user_data.password,
+    user = await service.create_user(
+        data,
+        session,
     )
 
-    ## check if the user is exist
-    if user is not None:
-        ## create an access token
-        access_token = create_access_token(
-            user_data={
-                "user_uid": str(user.uid),
-                "user_email": user.email,
-                "user_password": user.hashed_password,
-            }
-        )
+    if user is None:
 
-        ## create a refresh token
-        refresh_token = create_access_token(
-            user_data={
-                "user_uid": str(user.uid),
-                "user_email": user.email,
-                "user_password": user.hashed_password,
-            },
-            refresh=True,
-            expire=timedelta(days=2),
-        )
-
-        ## return results
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "user": {
-                "user_uid": user.uid,
-                "username": user.username,
-                "user_email": user.email,
-            },
-        }
-
-    else:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="the user is not found or the wrong in password or email ❌",
+            status_code=409,
+            detail="Email is already registered",
         )
 
+    verification_token = create_url_safe_token(
+        {
+            "email": user.email
+        }
+    )
 
-## sending email service
-@user_router.post("/mail")
-async def send_mails(
-    recipients: MailSchema,
-):
-    ## prepare the parameters for the message
-    html = "<h>Welcom to our Bookly Store</h>"
+    link = (
+        f"http://{mail_settings.DOMAIN_NAME}"
+        f"/api/v1/users/verify/{verification_token}"
+    )
 
-    ## use Celery as a BackGroundTask for sending messages
+    body = f"""
+    <h2>Verify your email</h2>
+    <p>
+        <a href="{link}">Verify account</a>
+    </p>
+    """
+
     send_message.delay(
-        recipients=recipients,
-        subject="Welcom Message",
-        body=html,
+        recipients=[user.email],
+        subject="Email verification",
+        body=body,
     )
 
-    return JSONResponse(content={"message": "The mail is sent successfully ✅"})
+    # Return safe user information only
+    safe_user = GetUser.model_validate(user)
+
+    return {
+        "message": "Registration successful. Check your email to verify.",
+        "user": safe_user,
+    }
 
 
-## Update methods
-@user_router.patch("/", response_model=GetUser)
-async def update_user(
-    email: str,
-    password: str,
-    updated_data: UpdateUser,
+# -------------------------
+# Verify Email
+# -------------------------
+
+@router.get("/verify/{token}")
+async def verify_email(
+    token: str,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
 ):
-    ## update the already exist user
-    updated_user = await service.update_user(
-        email,
-        password,
-        updated_data,
+
+    token_data = varify_url_safe_token(token)
+
+    if not token_data or not token_data.get("email"):
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired verification link",
+        )
+
+    user = await service.get_user_by_email(
+        token_data["email"],
+        session,
     )
 
-    ## check
-    if updated_user is not None:
-        return updated_user
-    else:
+    if user is None:
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="The user is not found ❌ or wrong in the password",
+            status_code=404,
+            detail="User not found",
         )
 
+    if user.is_verified:
 
-## Delete methods
-@user_router.delete("/")
-async def delete_user(
-    email: str,
-    password: str,
-) -> dict:
-    ## delete the user
-    check = await service.delete_user(email, password)
+        return {
+            "message": "Email is already verified"
+        }
 
-    ## check
-    if check is not None:
-        return {"message": "The user is deleted Successfully ✅"}
-    else:
+    await service.verify_user_email(
+        user,
+        session,
+    )
+
+    return {
+        "message": "Email verified successfully"
+    }
+
+
+# -------------------------
+# Login
+# -------------------------
+
+@router.post("/login")
+async def login(
+    data: Login_User,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    user = await service.authenticate(
+        str(data.email),
+        data.password,
+        session,
+    )
+
+    if user is None:
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="The user is not found ❌ or wrong in the password",
+            status_code=401,
+            detail="Incorrect email or password",
         )
+
+    if not user.is_verified:
+
+        raise HTTPException(
+            status_code=403,
+            detail="Please verify your email before logging in",
+        )
+
+    tokens = _token_pair(user)
+
+    return {
+        **tokens,
+        "user": {
+            "user_id": str(user.user_id),
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+        },
+    }
+
+
+# -------------------------
+# Refresh Token
+# -------------------------
+
+@router.post("/refresh")
+async def refresh(
+    token_data: Annotated[
+        dict,
+        Depends(get_refresh_token_data),
+    ],
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    try:
+
+        user_id = UUID(
+            token_data["user"]["user_id"]
+        )
+
+    except (KeyError, TypeError, ValueError):
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid refresh token",
+        )
+
+    user = await service.get_user_by_id(
+        user_id,
+        session,
+    )
+
+    if user is None:
+
+        raise HTTPException(
+            status_code=401,
+            detail="User no longer exists",
+        )
+
+    return _token_pair(user)
+
+
+# -------------------------
+# Logout
+# -------------------------
+
+@router.post("/logout")
+async def logout(
+    token_data: Annotated[
+        dict,
+        Depends(get_access_token_data),
+    ],
+):
+
+    remaining = max(
+        1,
+        int(token_data["exp"] - time.time()),
+    )
+
+    await add_tokens_to_blocklist(
+        token_data,
+        exp=remaining,
+    )
+
+    return {
+        "message": "Logged out successfully"
+    }
+
+
+# -------------------------
+# Current User
+# -------------------------
+
+@router.get(
+    "/me",
+    response_model=GetUser,
+)
+async def get_me(
+    user: CurrentUser,
+):
+
+    return user
+
+
+@router.patch(
+    "/me",
+    response_model=GetUser,
+)
+async def update_me(
+    data: UpdateUser,
+    user: CurrentUser,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    updated_user = await service.update_user(
+        user,
+        data,
+        session,
+    )
+
+    return updated_user
+
+
+@router.delete(
+    "/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_me(
+    user: CurrentUser,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    await service.delete_user(
+        user,
+        session,
+    )
+
+    return None
+
+
+# =========================
+# Admin Endpoints
+# =========================
+
+
+# Get all users
+
+@router.get(
+    "/",
+    response_model=list[GetUser],
+)
+async def admin_list_users(
+    admin: AdminUser,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    return await service.get_all_users(
+        session
+    )
+
+
+# Get user by ID
+
+@router.get(
+    "/{user_id}",
+    response_model=GetUser,
+)
+async def admin_get_user(
+    user_id: UUID,
+    admin: AdminUser,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    user = await service.get_user_by_id(
+        user_id,
+        session,
+    )
+
+    if user is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    return user
+
+
+# Update user
+
+@router.patch(
+    "/{user_id}",
+    response_model=GetUser,
+)
+async def admin_update_user(
+    user_id: UUID,
+    data: UpdateUser,
+    admin: AdminUser,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    user = await service.get_user_by_id(
+        user_id,
+        session,
+    )
+
+    if user is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    updated_user = await service.update_user(
+        user,
+        data,
+        session,
+    )
+
+    return updated_user
+
+
+# Change user role
+
+@router.patch(
+    "/{user_id}/role",
+    response_model=GetUser,
+)
+async def admin_change_role(
+    user_id: UUID,
+    data: UpdateUserRole,
+    admin: AdminUser,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    if (
+        admin.user_id == user_id
+        and data.role.value != "admin"
+    ):
+
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot remove your own admin role",
+        )
+
+    user = await service.get_user_by_id(
+        user_id,
+        session,
+    )
+
+    if user is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    updated_user = await service.update_role(
+        user,
+        data.role,
+        session,
+    )
+
+    return updated_user
+
+
+# Delete user
+
+@router.delete(
+    "/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def admin_delete_user(
+    user_id: UUID,
+    admin: AdminUser,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    if admin.user_id == user_id:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Use /me to delete your own account",
+        )
+
+    user = await service.get_user_by_id(
+        user_id,
+        session,
+    )
+
+    if user is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    await service.delete_user(
+        user,
+        session,
+    )
+
+    return None
