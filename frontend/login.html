@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hand_Drawn_animation — Log in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Manrope:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f3f5f9;--card:#fff;--ink:#23262d;--mute:#667085;--line:#d8deea;--blue:#3a63ff;--sun:#ffb81f;--red:#e5484d;--ok:#1f9d63;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#14161b;--card:#1d2028;--ink:#eceef3;--mute:#9aa1b0;--line:#30343f;--blue:#7b95ff}}
+:root[data-theme="dark"]{--paper:#14161b;--card:#1d2028;--ink:#eceef3;--mute:#9aa1b0;--line:#30343f;--blue:#7b95ff}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{font:500 15px/1.5 Manrope,system-ui,sans-serif;color:var(--ink);background:var(--paper)}
+a{color:var(--blue);font-weight:700;text-decoration:none}a:hover{text-decoration:underline}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+.wrap{min-height:100%;display:grid;grid-template-columns:1.1fr 1fr}
+.stage{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:12px;padding:40px;background-color:var(--paper);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:32px 32px}
+.brand{font:700 32px Caveat,cursive;display:flex;align-items:center;gap:10px}
+.brand b{width:14px;height:14px;border-radius:50%;background:var(--sun);box-shadow:0 0 0 4px color-mix(in srgb,var(--sun) 30%,transparent)}
+.stage h2{font:700 clamp(34px,4vw,56px)/1 Caveat,cursive;margin:0 0 10px;max-width:12ch}
+.stage p{color:var(--mute);max-width:38ch;margin:0}
+svg.scene{width:100%;max-height:50vh;overflow:visible}
+.ink{fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.5s cubic-bezier(.6,0,.2,1) forwards;animation-delay:var(--d,0s)}
+@keyframes draw{to{stroke-dashoffset:0}}
+.col{opacity:0;animation:fadein .9s ease forwards;animation-delay:var(--d,3s)}
+@keyframes fadein{to{opacity:1}}
+.rays{transform-origin:430px 80px;animation:spin 26s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.car{animation:drive 7s ease-in-out 4.2s infinite}
+@keyframes drive{0%,100%{transform:translateX(0)}50%{transform:translateX(46px)}}
+.wheel{transform-box:fill-box;transform-origin:center;animation:spin 1s linear infinite}
+.pulse{fill:none;stroke:var(--sun);stroke-width:4;transform-box:fill-box;transform-origin:center;animation:pulse .9s ease-out forwards}
+@keyframes pulse{from{transform:scale(1);opacity:1}to{transform:scale(3.4);opacity:0}}
+.hint{font:700 22px Caveat,cursive;fill:var(--mute)}
+.panel{display:grid;place-items:center;padding:32px;background:var(--card)}
+.card{width:min(420px,100%)}
+.tabs{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:14px;background:var(--paper);margin-bottom:28px}
+.tabs i{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:10px;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.12);transform:translateX(calc(var(--i)*100%));transition:transform .5s cubic-bezier(.3,1.35,.5,1)}
+.tabs a{position:relative;text-align:center;padding:10px;color:var(--mute)}.tabs a.on{color:var(--ink)}.tabs a:hover{text-decoration:none}
+.view{animation:viewin .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes viewin{from{opacity:0;transform:translateY(16px) scale(.98);filter:blur(5px)}}
+h1{font:700 46px/1 Caveat,cursive;margin:0 0 6px}
+.sub{color:var(--mute);margin:0 0 6px}
+.f{position:relative;margin:18px 0 0}
+.f input[type=text],.f input[type=email],.f input[type=password]{width:100%;height:56px;padding:22px 64px 6px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--paper);color:inherit;font:inherit;outline:none;transition:border-color .2s,box-shadow .2s,background .2s}
+.f label{position:absolute;left:15px;top:16px;color:var(--mute);pointer-events:none;transition:all .2s}
+.f input:focus+label,.f input:not(:placeholder-shown)+label{top:7px;font-size:11.5px;font-weight:700}
+.f input:focus{border-color:var(--blue);background:var(--card);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 20%,transparent)}
+.f.err input{border-color:var(--red)}.f.err{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.msg{color:var(--red);font-size:12.5px;margin:5px 2px 0}
+.formmsg{text-align:center;margin-top:12px;font-size:13px}
+.eye{position:absolute;right:8px;top:12px;height:32px;padding:0 8px;border:0;background:none;color:var(--mute);font:700 12px Manrope;cursor:pointer}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 22px;font-size:14px}
+.chk{display:flex;gap:8px;align-items:center;color:var(--mute);cursor:pointer}.chk input{accent-color:var(--blue);width:17px;height:17px}
+.btn{width:100%;height:52px;border:0;border-radius:12px;background:var(--blue);color:#fff;font:700 15px Manrope,sans-serif;cursor:pointer;position:relative;overflow:hidden;display:grid;place-items:center;transition:transform .15s,box-shadow .25s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 12px 26px -10px var(--blue)}.btn:active{transform:none}.btn:disabled{cursor:wait;opacity:.85}
+.btn::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-100%)}
+.btn:hover::after{transition:transform .7s;transform:translateX(100%)}
+.spin{width:20px;height:20px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.alt{text-align:center;color:var(--mute);margin:22px 0 0}
+.bars{display:flex;gap:6px;margin:10px 0 0}.bars i{flex:1;height:4px;border-radius:4px;background:var(--line);transition:background .3s}.bars i.on{background:var(--c)}
+.hintp{font-size:12.5px;color:var(--mute);margin:6px 2px 0}
+.done{text-align:center;animation:viewin .6s cubic-bezier(.2,.8,.2,1) both}
+.done svg{width:96px;height:96px;margin-bottom:10px}
+.done .ink{stroke:var(--ok);stroke-width:4}
+.done .col{fill:color-mix(in srgb,var(--ok) 14%,transparent);animation-delay:.3s}
+.back{display:inline-block;margin-bottom:20px;font-size:14px}
+.stage>*:not(.doodles){position:relative;z-index:1}.doodles{position:absolute;inset:0;pointer-events:none}.doodles span{position:absolute;font:700 28px Caveat,cursive;color:var(--sun);opacity:.6;animation:floaty 6s ease-in-out infinite}@keyframes floaty{50%{transform:translateY(-14px) rotate(24deg)}}
+.blink{transform-box:fill-box;transform-origin:center;animation:blink 4s ease-in-out 5s infinite}@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+.cloud{animation:drift 14s ease-in-out infinite alternate}@keyframes drift{to{transform:translateX(34px)}}
+.smoke{fill:var(--card);stroke:var(--ink);stroke-width:2;opacity:0;transform-box:fill-box;transform-origin:center;animation:rise 3.4s ease-out infinite}@keyframes rise{0%{opacity:0;transform:translate(0,0) scale(.6)}20%{opacity:.9}100%{opacity:0;transform:translate(22px,-70px) scale(1.7)}}
+.view>*{animation:stagger .6s cubic-bezier(.2,.8,.2,1) both}.view>:nth-child(2){animation-delay:.06s}.view>:nth-child(3){animation-delay:.12s}.view>:nth-child(4){animation-delay:.18s}.view>:nth-child(5){animation-delay:.24s}.view>:nth-child(6){animation-delay:.3s}.view>:nth-child(7){animation-delay:.36s}.view>:nth-child(8){animation-delay:.42s}@keyframes stagger{from{opacity:0;transform:translateY(14px)}}
+h1::after{content:"";display:block;height:8px;margin-top:8px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='8'%3E%3Cpath d='M2 5Q15 0 30 4T60 4T90 4T118 3' fill='none' stroke='%23ffb81f' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat;animation:underline .9s .35s cubic-bezier(.6,0,.2,1) both}@keyframes underline{from{width:0}to{width:120px}}.done h1::after{margin-inline:auto}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:5}.confetti i{position:absolute;left:62%;top:46%;width:9px;height:14px;border-radius:2px;animation:confetti 1.8s cubic-bezier(.2,.7,.3,1) forwards}@keyframes confetti{0%{transform:translate(0,0) rotate(0)}35%{transform:translate(calc(var(--x)*.6),var(--y)) rotate(calc(var(--r)*.5));opacity:1}100%{transform:translate(var(--x),calc(var(--y) + 560px)) rotate(var(--r));opacity:0}}
+@media (max-width:860px){.confetti i{left:50%}}
+@media (max-width:860px){.wrap{grid-template-columns:1fr}.stage{padding:20px 22px}.stage p{display:none}svg.scene{max-height:210px}.stage h2{font-size:32px}.panel{padding:28px 20px 40px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect}=React;
+const VIEWS=["login","signup","forgot","reset"];
+const getView=()=>{const name=location.hash.slice(1).split("?")[0];return VIEWS.includes(name)?name:"login"};
+const okEmail=v=>/^\S+@\S+\.\S+$/.test(v);
+
+/* ---- backend connection ---- */
+const API_BASE=(window.HAND_DRAWN_API_BASE||(location.port==="8000"?location.origin+"/api/v1/users":"http://localhost:8000/api/v1/users")).replace(/\/$/,"");
+const SESSION_KEY="hand_drawn_session";
+function readSession(){try{const raw=sessionStorage.getItem(SESSION_KEY)||localStorage.getItem(SESSION_KEY);return raw?JSON.parse(raw):null}catch(e){return null}}
+function saveSession(s,remember){const raw=JSON.stringify(s);localStorage.removeItem(SESSION_KEY);sessionStorage.removeItem(SESSION_KEY);(remember?localStorage:sessionStorage).setItem(SESSION_KEY,raw)}
+function clearSession(){localStorage.removeItem(SESSION_KEY);sessionStorage.removeItem(SESSION_KEY)}
+function signOut(){const s=readSession();clearSession();if(s?.access)api("/logout",{method:"POST",token:s.access}).catch(()=>{});location.hash="#login";location.reload()}
+async function api(path,{method="GET",body,token}={}){
+  const headers={"Content-Type":"application/json"};
+  if(token)headers.Authorization="Bearer "+token;
+  let res;
+  try{res=await fetch(API_BASE+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body)})}
+  catch(e){throw new Error("Cannot reach the server. Start the backend on "+API_BASE+".")}
+  let data={};try{data=await res.json()}catch(e){}
+  if(!res.ok){
+    const d=data.detail;
+    const msg=typeof d==="string"?d:Array.isArray(d)?d.map(x=>x.msg||JSON.stringify(x)).join(", "):(data.message||(res.status>=500?"Server error: check that PostgreSQL and Redis are running.":"Something went wrong ("+res.status+")"));
+    const err=new Error(msg);err.status=res.status;throw err;
+  }
+  return data;
+}
+const messageOf=e=>e&&e.message?e.message:"Something went wrong";
+
+function Scene(){
+  const [run,setRun]=useState(true);
+  const [b,setB]=useState(0);
+  const [m,setM]=useState({x:0,y:0});
+  useEffect(()=>{const h=e=>setM({x:(e.clientX/innerWidth-.5)*2,y:(e.clientY/innerHeight-.5)*2});window.addEventListener("mousemove",h);return()=>window.removeEventListener("mousemove",h)},[]);
+  const d=(s)=>({"--d":s+"s"});
+  const play={animationPlayState:run?"running":"paused"};
+  return (
+    <svg className="scene" style={{transform:`translate(${m.x*-10}px,${m.y*-7}px)`,transition:"transform .3s ease-out"}} viewBox="0 0 520 400" role="img" aria-label="A pencil sketch of a house, a sun and a car that turns into a colored cartoon">
+      {/* colour fills: the sketch turns cartoon */}
+      <rect className="col" x="60" y="210" width="160" height="120" fill="#ffd2b8" style={d(2.6)}/>
+      <polygon className="col" points="40,220 140,140 240,220" fill="#e5484d" style={d(2.9)}/>
+      <rect className="col" x="120" y="270" width="40" height="60" fill="#3a63ff" style={d(3.2)}/>
+      <rect className="col" x="180" y="235" width="30" height="30" fill="#bfe3ff" style={d(3.2)}/>
+      <circle className="col" cx="430" cy="80" r="34" fill="#ffb81f" style={d(3.0)}/>
+      <g className="car" style={play} onClick={()=>setRun(!run)} cursor="pointer">
+        <path className="col" d="M280 318V298Q280 288 292 286L322 282L346 256H394L418 282L452 288Q466 292 466 304V318Z" fill="#3fbf84" style={d(3.5)}/>
+        <path className="col" d="M352 262H388L406 282H334Z" fill="#d6f1ff" style={d(3.6)}/>
+        <path className="ink" pathLength="1" d="M280 318V298Q280 288 292 286L322 282L346 256H394L418 282L452 288Q466 292 466 304V318Z" style={d(1.8)}/>
+        <path className="ink" pathLength="1" d="M352 262H388L406 282H334Z" style={d(2.4)}/>
+        {[320,426].map(x=>(
+          <g key={x} className="wheel" style={play}>
+            <circle className="col" cx={x} cy="322" r="17" fill="#23262d" style={d(3.7)}/>
+            <circle className="ink" pathLength="1" cx={x} cy="322" r="17" style={d(2.2)}/>
+            <path className="col" d={`M${x-10} 322H${x+10}`} stroke="#fff" strokeWidth="3" strokeLinecap="round" style={d(3.8)}/>
+          </g>
+        ))}
+      </g>
+      {/* pencil lines */}
+      <path className="ink" pathLength="1" d="M10 336H510" style={d(0)}/>
+      <path className="ink" pathLength="1" d="M60 330V210H220V330" style={d(0.3)}/>
+      <path className="ink" pathLength="1" d="M40 220L140 140L240 220" style={d(0.8)}/>
+      <path className="ink" pathLength="1" d="M120 330V270H160V330" style={d(1.3)}/>
+      <path className="ink" pathLength="1" d="M180 235H210V265H180Z" style={d(1.5)}/>
+      <g onClick={()=>{setB(b+1);chime([520,780])}} cursor="pointer">
+        <circle className="ink" pathLength="1" cx="430" cy="80" r="34" style={d(1)}/>
+        <g className="rays">
+          {[...Array(8)].map((_,i)=>{const a=i*Math.PI/4;return <path key={i} className="ink" pathLength="1" d={`M${430+47*Math.cos(a)} ${80+47*Math.sin(a)}L${430+64*Math.cos(a)} ${80+64*Math.sin(a)}`} style={d(1.4+i*.1)}/>})}
+        </g>
+        {b>0&&<circle key={b} className="pulse" cx="430" cy="80" r="40"/>}
+      </g>
+      {/* delight: living sun face, clouds, chimney smoke */}
+      <g className="col" style={d(4.2)} pointerEvents="none">
+        <g className="blink">{[421,439].map(x=><g key={x}><circle cx={x} cy="74" r="6" fill="#fff" stroke="#23262d" strokeWidth="2"/><circle cx={x+m.x*2.5} cy={74+m.y*2.5} r="2.8" fill="#23262d"/></g>)}</g>
+        <path d="M420 90Q430 99 440 90" fill="none" stroke="#23262d" strokeWidth="2.5" strokeLinecap="round"/>
+        <circle cx="412" cy="87" r="4" fill="#ff8fa3" opacity=".7"/><circle cx="448" cy="87" r="4" fill="#ff8fa3" opacity=".7"/>
+      </g>
+      {[[0,0],[190,14]].map(([x,y],i)=>(<g key={i} transform={`translate(${x} ${y}) scale(${i?.7:1})`}><g className="cloud" style={{animationDelay:i*-5+"s"}}><path className="col" d="M70 78Q64 58 88 56Q96 36 122 44Q146 38 150 62Q170 64 164 78Z" fill="var(--card)" style={d(3)}/><path className="ink" pathLength="1" d="M70 78Q64 58 88 56Q96 36 122 44Q146 38 150 62Q170 64 164 78Z" style={d(.6+i*.4)}/></g></g>))}
+      <path className="ink" pathLength="1" d="M196 186V156H214V190" style={d(1.7)}/>
+      {[0,1.1,2.2].map(t=><circle key={t} className="smoke" cx="205" cy="150" r="7" style={{animationDelay:(4+t)+"s"}}/>)}
+      <text className="hint col" x="260" y="378" textAnchor="middle" style={d(4)}>click the sun · tap the car</text>
+    </svg>
+  );
+}
+
+function Field({id,label,type="text",value,set,err,auto,children}){
+  return (
+    <div className={"f"+(err?" err":"")}>
+      <input id={id} type={type} placeholder=" " value={value} autoComplete={auto} aria-invalid={!!err} onChange={e=>set(e.target.value)}/>
+      <label htmlFor={id}>{label}</label>
+      {children}
+      {err&&<div className="msg" role="alert">{err}</div>}
+    </div>
+  );
+}
+function Pass({id,label,value,set,err,auto}){
+  const [s,setS]=useState(false);
+  return <Field id={id} label={label} type={s?"text":"password"} value={value} set={set} err={err} auto={auto}>
+    <button type="button" className="eye" onClick={()=>setS(!s)} aria-label={s?"Hide password":"Show password"}>{s?"Hide":"Show"}</button>
+  </Field>;
+}
+const Btn=({ld,children})=><button className="btn" disabled={ld}>{ld?<span className="spin" aria-label="Loading"/>:children}</button>;
+
+function chime(f){try{const A=new (window.AudioContext||window.webkitAudioContext)();f.forEach((hz,i)=>{const o=A.createOscillator(),g=A.createGain(),t=A.currentTime+i*.09;o.type="sine";o.frequency.value=hz;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.12,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.5);o.connect(g);g.connect(A.destination);o.start(t);o.stop(t+.55)})}catch(e){}}
+function Confetti(){
+  useEffect(()=>{chime([660,880,1320])},[]);
+  const p=React.useMemo(()=>[...Array(34)].map((_,i)=>({x:(Math.random()-.5)*640,y:-(120+Math.random()*300),r:Math.random()*720-360,c:["#ffb81f","#e5484d","#3a63ff","#3fbf84","#ff8fa3"][i%5],dl:Math.random()*.15})),[]);
+  return <div className="confetti" aria-hidden="true">{p.map((q,i)=><i key={i} style={{"--x":q.x+"px","--y":q.y+"px","--r":q.r+"deg",background:q.c,animationDelay:q.dl+"s"}}/>)}</div>;
+}
+function Doodles(){
+  const g=[["✦","8%","22%",0],["○","46%","8%",1.5],["+","90%","48%",.8],["✧","18%","64%",2.2],["~","70%","86%",1.1],["✦","58%","58%",3]];
+  return <div className="doodles" aria-hidden="true">{g.map((x,i)=><span key={i} style={{left:x[1],top:x[2],animationDelay:x[3]+"s"}}>{x[0]}</span>)}</div>;
+}
+function Done({title,text,children}){
+  return (
+    <div className="done" role="status"><Confetti/>
+      <svg viewBox="0 0 96 96"><circle className="col" cx="48" cy="48" r="40"/><circle className="ink" pathLength="1" cx="48" cy="48" r="40"/><path className="ink" pathLength="1" d="M30 50L43 63L68 36" style={{"--d":".9s"}}/></svg>
+      <h1>{title}</h1><p className="sub">{text}</p>{children}
+    </div>
+  );
+}
+function submitFlow(errs,setEr,setLd,setOk,action){
+  setEr(errs);
+  if(Object.keys(errs).length) return;
+  setLd(true);
+  Promise.resolve()
+    .then(action)
+    .then(()=>setOk(true))
+    .catch(e=>setEr(e.fields||{form:messageOf(e)}))
+    .finally(()=>setLd(false));
+}
+const FormError=({er})=><>{er.form&&<div className="msg formmsg" role="alert">{er.form}</div>}</>;
+
+function Login(){
+  const [e,setE]=useState(""),[p,setP]=useState(""),[remember,setRemember]=useState(false);
+  const [er,setEr]=useState({}),[ld,setLd]=useState(false),[ok,setOk]=useState(false);
+  const session=readSession();
+  const go=ev=>{ev.preventDefault();const x={};if(!okEmail(e))x.e="Enter a valid email address.";if(!p)x.p="Enter your password.";
+    submitFlow(x,setEr,setLd,setOk,async()=>{
+      const d=await api("/login",{method:"POST",body:{email:e,password:p}});
+      saveSession({access:d.access_token,refresh:d.refresh_token,user:d.user},remember);
+    });
+  };
+  if(ok||session) return <Done title="Welcome back" text={"Signed in as "+((session||{}).user?.username||e)+"."}>
+    <button className="btn" onClick={signOut}>Sign out</button>
+  </Done>;
+  return (
+    <form className="view" onSubmit={go} noValidate>
+      <h1>Welcome back</h1><p className="sub">Log in to keep bringing your drawings to life.</p>
+      <Field id="le" label="Email" type="email" value={e} set={setE} err={er.e} auto="email"/>
+      <Pass id="lp" label="Password" value={p} set={setP} err={er.p} auto="current-password"/>
+      <div className="row"><label className="chk"><input type="checkbox" checked={remember} onChange={ev=>setRemember(ev.target.checked)}/>Keep me signed in</label><a href="#forgot">Forgot password?</a></div>
+      <Btn ld={ld}>Log in</Btn>
+      <FormError er={er}/>
+      <p className="alt">New here? <a href="#signup">Create an account</a></p>
+    </form>
+  );
+}
+
+function strength(p){
+  const s=[p.length>=8,/[A-Z]/.test(p)&&/[a-z]/.test(p),/\d/.test(p),/[^A-Za-z0-9]/.test(p)].filter(Boolean).length;
+  return {s,label:["Too weak","Weak","Fair","Good","Strong"][p?s:0],c:["#e5484d","#e5484d","#f59e0b","#3fbf84","#1f9d63"][s]};
+}
+function Signup(){
+  const [n,setN]=useState(""),[e,setE]=useState(""),[p,setP]=useState(""),[c,setC]=useState(""),[t,setT]=useState(false);
+  const [er,setEr]=useState({}),[ld,setLd]=useState(false),[ok,setOk]=useState(false);
+  const st=strength(p);
+  const go=ev=>{ev.preventDefault();const x={};
+    if(n.trim().length<2)x.n="Enter your name.";
+    if(!okEmail(e))x.e="Enter a valid email address.";
+    if(p.length<8)x.p="Use at least 8 characters.";
+    if(c!==p)x.c="Passwords don’t match.";
+    if(!t)x.t="Accept the terms to continue.";
+    submitFlow(x,setEr,setLd,setOk,async()=>{
+      try{
+        await api("/register",{method:"POST",body:{username:n.trim(),email:e,password:p}});
+      }catch(err){
+        if(err.status===409){const f=new Error("Email is already registered");f.fields={e:"Email is already registered"};throw f}
+        throw err;
+      }
+    })};
+  if(ok) return <Done title="Almost there!" text={"We sent a verification link to "+e+". Verify your email, then log in."}>
+    <p className="alt"><a href="#login">Back to log in</a></p>
+  </Done>;
+  return (
+    <form className="view" onSubmit={go} noValidate>
+      <h1>Create your account</h1><p className="sub">Sketch on paper, watch it move on screen.</p>
+      <Field id="sn" label="Full name" value={n} set={setN} err={er.n} auto="name"/>
+      <Field id="se" label="Email" type="email" value={e} set={setE} err={er.e} auto="email"/>
+      <Pass id="sp" label="Password" value={p} set={setP} err={er.p} auto="new-password"/>
+      <div className="bars" aria-hidden="true">{[1,2,3,4].map(i=><i key={i} className={st.s>=i&&p?"on":""} style={{"--c":st.c}}/>)}</div>
+      <p className="hintp">{p?"Password strength: "+st.label:"Use 8+ characters with letters, numbers and a symbol."}</p>
+      <Pass id="sc" label="Confirm password" value={c} set={setC} err={er.c} auto="new-password"/>
+      <div className="row" style={{flexDirection:"column",alignItems:"flex-start",gap:4}}>
+        <label className="chk"><input type="checkbox" checked={t} onChange={ev=>setT(ev.target.checked)}/>I agree to the Terms and Privacy Policy</label>
+        {er.t&&<div className="msg" role="alert">{er.t}</div>}
+      </div>
+      <Btn ld={ld}>Create account</Btn>
+      <FormError er={er}/>
+      <p className="alt">Already have an account? <a href="#login">Log in</a></p>
+    </form>
+  );
+}
+
+function Forgot(){
+  const [e,setE]=useState(""),[er,setEr]=useState({}),[ld,setLd]=useState(false),[ok,setOk]=useState(false);
+  const go=ev=>{ev.preventDefault();submitFlow(okEmail(e)?{}:{e:"Enter the email you signed up with."},setEr,setLd,setOk,
+    ()=>api("/forgot-password",{method:"POST",body:{email:e}}))};
+  if(ok) return <Done title="Check your inbox" text={"If that email is registered, we sent a reset link to "+e+". It expires in 30 minutes."}>
+    <p className="alt">Didn’t get it? <a href="#forgot" onClick={ev=>{ev.preventDefault();setOk(false)}}>Send again</a></p>
+    <p className="alt"><a href="#login">Back to log in</a></p>
+  </Done>;
+  return (
+    <form className="view" onSubmit={go} noValidate>
+      <a className="back" href="#login">← Back to log in</a>
+      <h1>Forgot your password?</h1><p className="sub">Enter your email and we’ll send you a link to set a new one.</p>
+      <Field id="fe" label="Email" type="email" value={e} set={setE} err={er.e} auto="email"/>
+      <div style={{height:22}}/>
+      <Btn ld={ld}>Send reset link</Btn>
+      <FormError er={er}/>
+    </form>
+  );
+}
+
+function Reset(){
+  const token=new URLSearchParams((location.hash.split("?")[1]||"")).get("token")||"";
+  const [p,setP]=useState(""),[c,setC]=useState(""),[er,setEr]=useState({}),[ld,setLd]=useState(false),[ok,setOk]=useState(false);
+  const st=strength(p);
+  const go=ev=>{ev.preventDefault();const x={};
+    if(!token)x.form="This reset link is invalid or expired. Request a new one.";
+    if(p.length<8)x.p="Use at least 8 characters.";
+    if(c!==p)x.c="Passwords don’t match.";
+    submitFlow(x,setEr,setLd,setOk,async()=>{
+      try{
+        await api("/reset-password",{method:"POST",body:{token,password:p}});
+      }catch(err){
+        if(err.status===400||err.status===404){const f=new Error("This reset link is invalid or expired.");f.fields={form:"This reset link is invalid or expired. Request a new one."};throw f}
+        throw err;
+      }
+    })};
+  if(ok) return <Done title="Password updated" text="You can now log in with your new password.">
+    <p className="alt"><a href="#login">Back to log in</a></p>
+  </Done>;
+  return (
+    <form className="view" onSubmit={go} noValidate>
+      <a className="back" href="#login">← Back to log in</a>
+      <h1>Set a new password</h1><p className="sub">Choose a strong password for your account.</p>
+      <Pass id="rp" label="New password" value={p} set={setP} err={er.p} auto="new-password"/>
+      <div className="bars" aria-hidden="true">{[1,2,3,4].map(i=><i key={i} className={st.s>=i&&p?"on":""} style={{"--c":st.c}}/>)}</div>
+      <p className="hintp">{p?"Password strength: "+st.label:"Use 8+ characters with letters, numbers and a symbol."}</p>
+      <Pass id="rc" label="Confirm password" value={c} set={setC} err={er.c} auto="new-password"/>
+      <Btn ld={ld}>Update password</Btn>
+      <FormError er={er}/>
+    </form>
+  );
+}
+
+function App(){
+  const [v,setV]=useState(getView());
+  useEffect(()=>{const h=()=>{setV(getView());window.scrollTo(0,0)};window.addEventListener("hashchange",h);return()=>window.removeEventListener("hashchange",h)},[]);
+  useEffect(()=>{document.title="Hand_Drawn_animation — "+({login:"Log in",signup:"Sign up",forgot:"Reset password",reset:"Set new password"})[v]},[v]);
+  return (
+    <div className="wrap">
+      <section className="stage"><Doodles/>
+        <div className="brand"><b/>Hand_Drawn_animation</div>
+        <Scene/>
+        <div><h2>Draw it on paper. Watch it come alive.</h2><p>Point your camera at a pencil sketch and it turns into a cartoon that moves and reacts when you touch it.</p></div>
+      </section>
+      <main className="panel"><div className="card">
+        {v!=="forgot"&&v!=="reset"&&<nav className="tabs" style={{"--i":v==="signup"?1:0}}><i/><a href="#login" className={v==="login"?"on":""}>Log in</a><a href="#signup" className={v==="signup"?"on":""}>Sign up</a></nav>}
+        <div key={v}>{v==="login"?<Login/>:v==="signup"?<Signup/>:v==="forgot"?<Forgot/>:<Reset/>}</div>
+      </div></main>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
