@@ -166,6 +166,22 @@ class UserService:
         await session.commit()
 
 
+    async def set_user_password(
+        self,
+        user: UserModel,
+        new_password: str,
+        session: AsyncSession,
+    ) -> None:
+
+        user.hashed_password = hashing_password(new_password)
+        user.updated_at = datetime.now(timezone.utc)
+
+        session.add(user)
+
+        await session.commit()
+        await session.refresh(user)
+
+
     async def verify_user_email(
         self,
         user: UserModel,

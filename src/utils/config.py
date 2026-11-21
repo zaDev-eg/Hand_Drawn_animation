@@ -18,6 +18,12 @@ class AppSettings(BaseConfigurations):
     APP_NAME: str = "Hand_Drawn_animation"
     APP_VERSION: str = "1.0.0"
 
+    # Where the browser can reach this frontend (used in e-mail links).
+    FRONTEND_URL: str = "http://localhost:8000/login"
+
+    # Comma separated list of origins allowed to call the API from a browser.
+    CORS_ORIGINS: str = "*"
+
 
 class DataBase(BaseConfigurations):
     POATGRES_HOST: str = "localhost"

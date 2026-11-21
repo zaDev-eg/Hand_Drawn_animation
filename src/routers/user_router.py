@@ -15,6 +15,8 @@ from ..services.user_crud_logic import UserService
 from ..schemas.request_schema import (
     CreateUser,
     Login_User,
+    ForgotPassword,
+    ResetPassword,
     UpdateUser,
     UpdateUserRole,
     GetUser,
@@ -31,9 +33,11 @@ from ..utils.authontication import (
     create_access_token,
     create_url_safe_token,
     varify_url_safe_token,
+    create_password_reset_token,
+    varify_password_reset_token,
 )
 
-from ..utils.config import mail_settings
+from ..utils.config import app_settings, mail_settings
 from ..utils.celery import send_message
 
 from ..models.user_model import UserModel
@@ -228,6 +232,96 @@ async def login(
             "email": user.email,
             "role": user.role,
         },
+    }
+
+
+# -------------------------
+# Forgot / Reset Password
+# -------------------------
+
+@router.post("/forgot-password")
+async def forgot_password(
+    data: ForgotPassword,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    user = await service.get_user_by_email(
+        str(data.email),
+        session,
+    )
+
+    # Always answer the same way so accounts cannot be enumerated.
+    if user is not None:
+
+        reset_token = create_password_reset_token(
+            {"email": user.email}
+        )
+
+        link = (
+            f"{app_settings.FRONTEND_URL.rstrip('/')}/#reset"
+            f"?token={reset_token}"
+        )
+
+        body = f"""
+        <h2>Reset your password</h2>
+        <p>
+            <a href="{link}">Choose a new password</a>
+        </p>
+        <p>This link expires in 30 minutes.</p>
+        """
+
+        send_message.delay(
+            recipients=[user.email],
+            subject="Reset your password",
+            body=body,
+        )
+
+    return {
+        "message": "If that email is registered, a reset link has been sent."
+    }
+
+
+@router.post("/reset-password")
+async def reset_password(
+    data: ResetPassword,
+    session: Annotated[
+        AsyncSession,
+        Depends(get_session),
+    ],
+):
+
+    token_data = varify_password_reset_token(data.token)
+
+    if not token_data or not token_data.get("email"):
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired reset link",
+        )
+
+    user = await service.get_user_by_email(
+        token_data["email"],
+        session,
+    )
+
+    if user is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    await service.set_user_password(
+        user,
+        data.password,
+        session,
+    )
+
+    return {
+        "message": "Password updated successfully. You can log in now."
     }
 
 

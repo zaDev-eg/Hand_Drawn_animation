@@ -22,6 +22,15 @@ class Login_User(BaseModel):
     password: str
 
 
+class ForgotPassword(BaseModel):
+    email: EmailStr
+
+
+class ResetPassword(BaseModel):
+    token: str = Field(min_length=10)
+    password: str = Field(min_length=8, max_length=128)
+
+
 class UpdateUser(BaseModel):
     username: str | None = Field(
         default=None,
